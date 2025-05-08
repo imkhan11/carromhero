@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrom Pool Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #374151; /* bg-gray-700 */
+            color: white;
+            overflow: hidden; /* Prevent scrollbars from game canvas */
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 500px; /* Max width for the game board for better viewing on larger screens */
+            padding: 10px;
+        }
+        #gameCanvas {
+            border: 5px solid #ca8a04; /* yellow-600 */
+            background-color: #f0e68c; /* Khaki - a common carrom board color */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border-radius: 15px; /* Rounded corners for the board */
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Make canvas a square */
+        }
+        .start-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            height: 100vh;
+            width: 100%;
+            background-color: #1f2937; /* bg-gray-800 */
+        }
+        .start-button {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #f59e0b; /* amber-500 */
+            color: #1f2937; /* gray-800 */
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px #b45309; /* amber-700 for 3D effect */
+            transition: all 0.1s ease;
+        }
+        .start-button:active {
+            box-shadow: 0 2px #b45309;
+            transform: translateY(3px);
+        }
+        .hidden {
+            display: none !important;
+        }
+        .score-board {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #facc15; /* yellow-400 */
+        }
+        .controls {
+            margin-top: 15px;
+            text-align: center;
+        }
+        .controls button {
+            background-color: #10b981; /* emerald-500 */
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            margin: 0 5px;
+            cursor: pointer;
+            box-shadow: 0 3px #059669; /* emerald-700 */
+        }
+        .controls button:active {
+            box-shadow: 0 1px #059669;
+            transform: translateY(2px);
+        }
+        .message-box {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="startScreen" class="start-screen">
+        <h1 class="text-5xl font-bold mb-8" style="font-family: 'Press Start 2P', cursive; color: #f59e0b;">Carrom Hero</h1>
+        <button id="startGameButton" class="start-button">Game Shuru Karein</button>
+    </div>
+
+    <div id="gameArea" class="game-container hidden">
+        <div id="scoreBoard" class="score-board">Player 1: 0 | Player 2: 0</div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls">
+            <p class="text-sm mb-2 text-gray-300">Striker ko set karein aur shoot karein (Click/Tap)</p>
+            <button id="resetButton">Reset Game</button>
+        </div>
+    </div>
+    <div id="messageBox" class="message-box hidden"></div>
+
+    <script>
+        // DOM Elements
+        const startScreen = document.getElementById('startScreen');
+        const gameArea = document.getElementById('gameArea');
+        const startGameButton = document.getElementById('startGameButton');
+        const resetButton = document.getElementById('resetButton');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreBoard = document.getElementById('scoreBoard');
+        const messageBox = document.getElementById('messageBox');
+
+        // Game constants
+        let boardSize; // Will be set dynamically
+        let pocketRadius;
+        let coinRadius;
+        let strikerRadius;
+        const FRICTION = 0.985; // How much the coins slow down
+        const MIN_SPEED = 0.1; // Speed below which coins stop
+        const STRIKER_MAX_POWER = 15;
+
+        // Game state
+        let pieces = []; // To store all coins and striker
+        let striker;
+        let currentPlayer = 1; // 1 or 2
+        let scores = { player1: 0, player2: 0 };
+        let isAiming = false;
+        let aimStart = { x: 0, y: 0 };
+        let canPlaceStriker = true;
+        let foulCommitted = false;
+        let queenPocketedBy = null; // null, 1, or 2
+        let queenCovered = false;
+        let turnPocketedCount = 0; // Coins pocketed in the current turn
+
+        // Piece class (for coins and striker)
+        class Piece {
+            constructor(x, y, radius, color, type = 'coin', id = null) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.color = color;
+                this.type = type; // 'coin', 'queen', 'striker'
+                this.id = id || Math.random().toString(36).substr(2, 9); // Unique ID
+                this.vx = 0; // Velocity x
+                this.vy = 0; // Velocity y
+                this.isPocketed = false;
+                this.mass = (type === 'striker') ? 2 : 1; // Striker is heavier
+            }
+
+            draw() {
+                if (this.isPocketed) return;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+
+                // Simple shine effect for coins
+                if (this.type !== 'striker') {
+                    ctx.beginPath();
+                    ctx.arc(this.x - this.radius * 0.2, this.y - this.radius * 0.2, this.radius * 0.3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.fill();
+                    ctx.closePath();
+                }
+            }
+
+            update() {
+                if (this.isPocketed) return;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                this.vx *= FRICTION;
+                this.vy *= FRICTION;
+
+                if (Math.abs(this.vx) < MIN_SPEED) this.vx = 0;
+                if (Math.abs(this.vy) < MIN_SPEED) this.vy = 0;
+
+                // Wall collisions
+                if (this.x - this.radius < 0) { this.x = this.radius; this.vx *= -0.8; }
+                if (this.x + this.radius > boardSize) { this.x = boardSize - this.radius; this.vx *= -0.8; }
+                if (this.y - this.radius < 0) { this.y = this.radius; this.vy *= -0.8; }
+                if (this.y + this.radius > boardSize) { this.y = boardSize - this.radius; this.vy *= -0.8; }
+            }
+
+            isMoving() {
+                return this.vx !== 0 || this.vy !== 0;
+            }
+        }
+        
+        function showMessage(text, duration = 3000) {
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, duration);
+        }
+
+        function resizeCanvas() {
+            const gameContainerWidth = gameArea.clientWidth;
+            boardSize = Math.min(gameContainerWidth - 20, 500); // Ensure some padding
+            canvas.width = boardSize;
+            canvas.height = boardSize;
+
+            // Update dynamic sizes
+            pocketRadius = boardSize * 0.07; // 7% of board size
+            coinRadius = boardSize * 0.03;   // 3% of board size
+            strikerRadius = boardSize * 0.045; // 4.5% of board size
+            
+            if (pieces.length > 0) { // If game has started, re-init pieces with new sizes
+                 // This is a simplified reset; ideally, piece positions should be scaled.
+                 // For now, we'll just re-initialize, which means current game progress might be lost on resize.
+                // initGame(); // Or a more sophisticated scaling function
+            }
+            drawGame(); // Redraw with new sizes
+        }
+
+        function initGame() {
+            pieces = [];
+            scores = { player1: 0, player2: 0 };
+            currentPlayer = 1;
+            canPlaceStriker = true;
+            foulCommitted = false;
+            queenPocketedBy = null;
+            queenCovered = false;
+            turnPocketedCount = 0;
+
+            // Create Striker
+            striker = new Piece(boardSize / 2, boardSize * 0.8, strikerRadius, '#4ade80', 'striker'); // Light green
+            pieces.push(striker);
+
+            // Create Coins
+            const center = { x: boardSize / 2, y: boardSize / 2 };
+            const arrangementRadius = coinRadius * 2.5;
+
+            // Queen
+            pieces.push(new Piece(center.x, center.y, coinRadius, '#ef4444', 'queen')); // Red
+
+            // Black and White coins
+            const angles = [0, 60, 120, 180, 240, 300]; // Hexagonal arrangement for inner circle
+            const outerAngles = [30, 90, 150, 210, 270, 330]; // For outer circle
+
+            // Inner circle of coins around queen
+            for (let i = 0; i < 6; i++) {
+                const angleRad = angles[i] * Math.PI / 180;
+                const x = center.x + arrangementRadius * Math.cos(angleRad);
+                const y = center.y + arrangementRadius * Math.sin(angleRad);
+                pieces.push(new Piece(x, y, coinRadius, (i % 2 === 0) ? '#333333' : '#FFFFFF')); // Alternating black/white
+            }
+            
+            // Outer circle of coins
+            for (let i = 0; i < 12; i++) {
+                const angleRad = (i * 30) * Math.PI / 180; // 12 coins, 30 degrees apart
+                const x = center.x + arrangementRadius * 2 * Math.cos(angleRad);
+                const y = center.y + arrangementRadius * 2 * Math.sin(angleRad);
+                 // Distribute remaining black and white coins
+                const color = (i < 6) ? '#333333' : '#FFFFFF'; // Example distribution
+                pieces.push(new Piece(x, y, coinRadius, color));
+            }
+            
+            // Filter out only 9 black and 9 white coins + 1 queen (total 19 + striker)
+            let blackCount = 0;
+            let whiteCount = 0;
+            const finalCoins = pieces.filter(p => p.type !== 'striker');
+            const actualCoins = [];
+            finalCoins.forEach(p => {
+                if (p.type === 'queen') actualCoins.push(p);
+                else if (p.color === '#333333' && blackCount < 9) { actualCoins.push(p); blackCount++; }
+                else if (p.color === '#FFFFFF' && whiteCount < 9) { actualCoins.push(p); whiteCount++; }
+            });
+            
+            pieces = [striker, ...actualCoins];
+
+
+            updateScoreBoard();
+            resetStrikerPosition();
+            drawGame();
+        }
+
+        function resetStrikerPosition() {
+            striker.isPocketed = false; // Ensure striker is not marked as pocketed
+            striker.vx = 0;
+            striker.vy = 0;
+            // Place striker on baseline based on current player
+            if (currentPlayer === 1) {
+                striker.x = boardSize / 2;
+                striker.y = boardSize * 0.80; // Player 1 baseline (bottom)
+            } else {
+                striker.x = boardSize / 2;
+                striker.y = boardSize * 0.20; // Player 2 baseline (top) - for 2 player mode
+            }
+            // Ensure striker is within baseline limits
+            const baselineMargin = boardSize * 0.15; // Margin from sides for baseline
+            const baselineY = (currentPlayer === 1) ? boardSize * 0.80 : boardSize * 0.20;
+            const minX = baselineMargin + striker.radius;
+            const maxX = boardSize - baselineMargin - striker.radius;
+            striker.x = Math.max(minX, Math.min(striker.x, maxX));
+            striker.y = baselineY;
+
+            canPlaceStriker = true;
+            isAiming = false;
+            drawGame();
+        }
+
+
+        function drawBoard() {
+            // Main board
+            ctx.fillStyle = '#f0e68c'; // Khaki
+            ctx.fillRect(0, 0, boardSize, boardSize);
+
+            // Border
+            ctx.strokeStyle = '#854d0e'; // brown-700
+            ctx.lineWidth = boardSize * 0.02; // Thicker border
+            ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, boardSize - ctx.lineWidth, boardSize - ctx.lineWidth);
+
+            // Pockets
+            const pocketPositions = [
+                { x: pocketRadius*0.8, y: pocketRadius*0.8 },
+                { x: boardSize - pocketRadius*0.8, y: pocketRadius*0.8 },
+                { x: pocketRadius*0.8, y: boardSize - pocketRadius*0.8 },
+                { x: boardSize - pocketRadius*0.8, y: boardSize - pocketRadius*0.8 }
+            ];
+            ctx.fillStyle = '#1a1a1a'; // Darker black for pockets
+            pocketPositions.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            });
+
+            // Center circle design
+            ctx.strokeStyle = '#c2410c'; // orange-600
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.15, 0, Math.PI * 2); // Main center circle
+            ctx.stroke();
+            ctx.closePath();
+            ctx.beginPath();
+            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.1, 0, Math.PI * 2); // Inner circle
+            ctx.stroke();
+            ctx.closePath();
+            
+            // Decorative lines in center (simplified)
+            for(let i=0; i<4; i++){
+                ctx.save();
+                ctx.translate(boardSize/2, boardSize/2);
+                ctx.rotate(i * Math.PI / 2);
+                ctx.beginPath();
+                ctx.moveTo(0, -boardSize * 0.05);
+                ctx.lineTo(0, -boardSize * 0.18);
+                ctx.stroke();
+                ctx.closePath();
+                ctx.restore();
+            }
+
+
+            // Baselines (where striker is placed)
+            ctx.strokeStyle = '#dc2626'; // red-600
+            ctx.lineWidth = 3;
+            const baselineOffset = boardSize * 0.20;
+            const baselineLength = boardSize * 0.7; // Length of the line itself
+            const baselineStart = (boardSize - baselineLength) / 2;
+
+            // Bottom baseline
+            ctx.beginPath();
+            ctx.moveTo(baselineStart, baselineOffset);
+            ctx.lineTo(baselineStart + baselineLength, baselineOffset);
+            ctx.stroke();
+            // Top baseline
+            ctx.beginPath();
+            ctx.moveTo(baselineStart, boardSize - baselineOffset);
+            ctx.lineTo(baselineStart + baselineLength, boardSize - baselineOffset);
+            ctx.stroke();
+            
+            // Small circles on baseline ends
+            ctx.fillStyle = '#dc2626';
+            [baselineOffset, boardSize - baselineOffset].forEach(yPos => {
+                ctx.beginPath();
+                ctx.arc(baselineStart, yPos, boardSize*0.015, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(baselineStart + baselineLength, yPos, boardSize*0.015, 0, Math.PI*2);
+                ctx.fill();
+            });
+        }
+
+        function drawAimLine() {
+            if (!isAiming || !striker) return;
+            ctx.beginPath();
+            ctx.moveTo(striker.x, striker.y);
+            const dx = striker.x - aimStart.x; // Reversed for pull-back effect
+            const dy = striker.y - aimStart.y;
+            ctx.lineTo(striker.x + dx, striker.y + dy);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset line dash
+            ctx.closePath();
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, boardSize, boardSize);
+            drawBoard();
+            pieces.forEach(p => p.draw());
+            if (isAiming) {
+                drawAimLine();
+            }
+        }
+
+        function updateGame() {
+            let stillMoving = false;
+            pieces.forEach(p => {
+                p.update();
+                if (p.isMoving()) stillMoving = true;
+            });
+
+            handleCollisions();
+            handlePocketing();
+
+            drawGame();
+
+            if (!stillMoving && !canPlaceStriker) { // All pieces stopped, and striker was shot
+                endTurn();
+            }
+
+            requestAnimationFrame(updateGame);
+        }
+        
+        function endTurn() {
+            let switchPlayer = true;
+            if (foulCommitted) {
+                showMessage(`Player ${currentPlayer} ne foul kiya!`);
+                 // Penalty: e.g., opponent gets an extra turn or a pocketed coin is returned
+                 if (scores[`player${currentPlayer}`] > 0 && turnPocketedCount > 0) { // If foul and pocketed own coin
+                    // For simplicity, just deduct one point if any was scored.
+                    // A more complex rule would be to return one of the pocketed coins.
+                    // scores[`player${currentPlayer}`]--; 
+                 }
+            } else {
+                if (turnPocketedCount > 0) { // Pocketed a coin, gets another turn
+                    showMessage(`Player ${currentPlayer} ne coin pocket kiya! Dobara kheliye.`);
+                    switchPlayer = false;
+                }
+            }
+
+            if (switchPlayer) {
+                currentPlayer = (currentPlayer === 1) ? 2 : 1;
+                showMessage(`Ab Player ${currentPlayer} ki baari.`);
+            }
+            
+            // Queen logic
+            if (queenPocketedBy) {
+                if (queenPocketedBy === currentPlayer && !queenCovered && turnPocketedCount === 0) {
+                    // Failed to cover queen
+                    showMessage(`Player ${currentPlayer} queen cover karne mein nakaam! Queen board par wapas.`);
+                    // Return queen to center (simplified)
+                    const queen = pieces.find(p => p.type === 'queen');
+                    if (queen) {
+                        queen.isPocketed = false;
+                        queen.x = boardSize / 2; queen.y = boardSize / 2;
+                        queen.vx = 0; queen.vy = 0;
+                    }
+                    scores[`player${queenPocketedBy}`] -= 5; // Penalty for not covering
+                    queenPocketedBy = null;
+                } else if (queenPocketedBy === currentPlayer && queenCovered) {
+                    showMessage(`Player ${currentPlayer} ne Queen cover kar li! +5 points.`);
+                    // Points already added, queen is fine.
+                    queenPocketedBy = null; // Reset for next queen pocketing
+                    queenCovered = false;
+                }
+            }
+
+
+            updateScoreBoard();
+            resetStrikerPosition();
+            foulCommitted = false;
+            turnPocketedCount = 0; // Reset for next turn
+            
+            checkWinCondition();
+        }
+
+        function checkWinCondition() {
+            const whiteCoinsLeft = pieces.filter(p => p.color === '#FFFFFF' && !p.isPocketed).length;
+            const blackCoinsLeft = pieces.filter(p => p.color === '#333333' && !p.isPocketed).length;
+            const queen = pieces.find(p => p.type === 'queen');
+
+            // Basic win: all coins of one type pocketed + queen (if applicable)
+            // Simplified: Player who clears their coins first and has queen points (if they pocketed it)
+            // For this demo, let's just say if a player reaches X points.
+            const winningScore = 25; // Example winning score
+            if (scores.player1 >= winningScore) {
+                showMessage(`Player 1 jeet gaya! Score: ${scores.player1} - ${scores.player2}`, 10000);
+                resetGame();
+            } else if (scores.player2 >= winningScore) {
+                showMessage(`Player 2 jeet gaya! Score: ${scores.player1} - ${scores.player2}`, 10000);
+                resetGame();
+            } else if (whiteCoinsLeft === 0 && blackCoinsLeft === 0 && queen.isPocketed) {
+                 showMessage(`Sabhi coins pocket ho gaye! Final Score: P1: ${scores.player1}, P2: ${scores.player2}`, 10000);
+                 resetGame();
+            }
+        }
+
+
+        function handleCollisions() {
+            for (let i = 0; i < pieces.length; i++) {
+                for (let j = i + 1; j < pieces.length; j++) {
+                    const p1 = pieces[i];
+                    const p2 = pieces[j];
+
+                    if (p1.isPocketed || p2.isPocketed) continue;
+
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const combinedRadius = p1.radius + p2.radius;
+
+                    if (distance < combinedRadius) {
+                        // Collision detected
+                        const angle = Math.atan2(dy, dx);
+                        const sin = Math.sin(angle);
+                        const cos = Math.cos(angle);
+
+                        // Rotate p1's position
+                        let x1 = 0;
+                        let y1 = 0;
+
+                        // Rotate p2's position
+                        let x2 = dx * cos + dy * sin;
+                        let y2 = dy * cos - dx * sin;
+
+                        // Rotate p1's velocity
+                        let vx1 = p1.vx * cos + p1.vy * sin;
+                        let vy1 = p1.vy * cos - p1.vx * sin;
+
+                        // Rotate p2's velocity
+                        let vx2 = p2.vx * cos + p2.vy * sin;
+                        let vy2 = p2.vy * cos - p2.vx * sin;
+
+                        // Collision reaction: Elastic collision formula
+                        let final_vx1 = ((p1.mass - p2.mass) * vx1 + 2 * p2.mass * vx2) / (p1.mass + p2.mass);
+                        let final_vx2 = ((p2.mass - p1.mass) * vx2 + 2 * p1.mass * vx1) / (p1.mass + p2.mass);
+                        
+                        // Preserve vy components as collision is 1D along x-axis after rotation
+                        let final_vy1 = vy1;
+                        let final_vy2 = vy2;
+
+                        // Update velocities
+                        vx1 = final_vx1;
+                        vx2 = final_vx2;
+                        
+                        // Separate the pieces slightly to prevent sticking
+                        const overlap = combinedRadius - distance;
+                        const separationFactor = 0.5; // How much to separate
+                        const sepX = (overlap * cos * separationFactor);
+                        const sepY = (overlap * sin * separationFactor);
+
+                        p1.x -= sepX;
+                        p1.y -= sepY;
+                        p2.x += sepX;
+                        p2.y += sepY;
+
+
+                        // Rotate velocities back
+                        p1.vx = vx1 * cos - vy1 * sin;
+                        p1.vy = vy1 * cos + vx1 * sin;
+                        p2.vx = vx2 * cos - vy2 * sin;
+                        p2.vy = vy2 * cos + vx2 * sin;
+                    }
+                }
+            }
+        }
+
+        function handlePocketing() {
+            const pocketPositions = [
+                { x: pocketRadius*0.8, y: pocketRadius*0.8 },
+                { x: boardSize - pocketRadius*0.8, y: pocketRadius*0.8 },
+                { x: pocketRadius*0.8, y: boardSize - pocketRadius*0.8 },
+                { x: boardSize - pocketRadius*0.8, y: boardSize - pocketRadius*0.8 }
+            ];
+
+            pieces.forEach(p => {
+                if (p.isPocketed) return;
+
+                for (const pocket of pocketPositions) {
+                    const dx = p.x - pocket.x;
+                    const dy = p.y - pocket.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < pocketRadius - p.radius/3) { // Coin center needs to be well within pocket
+                        p.isPocketed = true;
+                        p.vx = 0; p.vy = 0;
+                        turnPocketedCount++;
+
+                        if (p.type === 'striker') {
+                            showMessage("Striker pocketed! Foul!");
+                            foulCommitted = true;
+                            scores[`player${currentPlayer}`] -= 5; // Penalty for pocketing striker
+                            // Striker will be reset at endTurn
+                        } else if (p.type === 'queen') {
+                            showMessage("Queen pocketed!");
+                            scores[`player${currentPlayer}`] += 5;
+                            queenPocketedBy = currentPlayer;
+                            queenCovered = false; // Needs to be covered
+                        } else { // Regular coin
+                            if (p.color === '#FFFFFF') { // White coin
+                                scores.player1 += 1; // Assuming Player 1 plays for white
+                                if (queenPocketedBy === currentPlayer) queenCovered = true;
+                            } else if (p.color === '#333333') { // Black coin
+                                scores.player2 += 1; // Assuming Player 2 plays for black
+                                 if (queenPocketedBy === currentPlayer) queenCovered = true;
+                            }
+                             // If current player pockets opponent's coin, it's fine, points go to opponent's color.
+                             // If current player pockets their own color coin:
+                            if ((currentPlayer === 1 && p.color === '#FFFFFF') || (currentPlayer === 2 && p.color === '#333333')) {
+                                // Pocketed own coin
+                            } else {
+                                // Pocketed opponent's coin - no penalty, just points for that color
+                            }
+                        }
+                        updateScoreBoard();
+                        break; 
+                    }
+                }
+            });
+             // Remove pocketed pieces from active play (but keep in array for score or reset)
+            // pieces = pieces.filter(p => !p.isPocketed || p.type === 'striker'); // Keep striker for reset
+        }
+
+        function updateScoreBoard() {
+            scoreBoard.textContent = `Player 1 (Safed): ${scores.player1} | Player 2 (Kala): ${scores.player2}`;
+        }
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            // Consider CSS scaling if any (though not explicitly used here for canvas internal coords)
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            return {
+                x: (evt.clientX - rect.left) * scaleX,
+                y: (evt.clientY - rect.top) * scaleY
+            };
+        }
+        
+        // Event Listeners
+        startGameButton.addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            gameArea.classList.remove('hidden');
+            resizeCanvas(); // Set initial canvas size
+            initGame();
+            updateGame(); // Start game loop
+        });
+
+        resetButton.addEventListener('click', () => {
+            showMessage("Game Reset ho raha hai...", 2000);
+            initGame(); // Re-initialize game state
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (!canPlaceStriker || !striker || striker.isPocketed) return;
+            const pos = getMousePos(e);
+
+            // If striker is on baseline and player clicks near it, start aiming
+            const distToStriker = Math.sqrt((pos.x - striker.x)**2 + (pos.y - striker.y)**2);
+            if (distToStriker < striker.radius * 2.5) { // Allow clicking a bit around striker
+                 isAiming = true;
+                 aimStart = pos;
+            } else { // Allow placing striker on baseline
+                const baselineY = (currentPlayer === 1) ? boardSize * 0.80 : boardSize * 0.20;
+                const baselineMargin = boardSize * 0.15;
+                const minX = baselineMargin + striker.radius;
+                const maxX = boardSize - baselineMargin - striker.radius;
+
+                if ((currentPlayer === 1 && pos.y > boardSize * 0.75 && pos.y < boardSize * 0.85) ||
+                    (currentPlayer === 2 && pos.y > boardSize * 0.15 && pos.y < boardSize * 0.25)) {
+                    striker.x = Math.max(minX, Math.min(pos.x, maxX));
+                    striker.y = baselineY;
+                    drawGame(); // Redraw striker at new position
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isAiming || !striker || striker.isPocketed) return;
+            aimStart = getMousePos(e); // Update aim target as mouse moves
+            drawGame(); // Redraw to show aim line
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            if (!isAiming || !striker || striker.isPocketed) return;
+            
+            const finalAimPos = getMousePos(e);
+            const dx = finalAimPos.x - striker.x;
+            const dy = finalAimPos.y - striker.y;
+            
+            // Calculate power based on drag distance (inverted: drag back to shoot forward)
+            const powerX = (striker.x - finalAimPos.x);
+            const powerY = (striker.y - finalAimPos.y);
+
+            const distance = Math.sqrt(powerX * powerX + powerY * powerY);
+            const maxDragDistance = boardSize * 0.3; // Max distance for full power
+            let powerRatio = Math.min(distance / maxDragDistance, 1.0);
+
+
+            striker.vx = (powerX / distance) * STRIKER_MAX_POWER * powerRatio;
+            striker.vy = (powerY / distance) * STRIKER_MAX_POWER * powerRatio;
+            
+            // Cap velocity if it's too low (prevent tiny movements)
+            if (Math.sqrt(striker.vx**2 + striker.vy**2) < 1) {
+                striker.vx = 0;
+                striker.vy = 0;
+            }
+
+
+            isAiming = false;
+            canPlaceStriker = false; // Striker has been shot
+            turnPocketedCount = 0; // Reset for this shot
+            foulCommitted = false; // Reset foul status for this shot
+            drawGame(); // Clear aim line
+        });
+        
+        // Touch events (simplified mapping to mouse events)
+        canvas.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }));
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 1) {
+                e.preventDefault();
+                canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }));
+            }
+        }, { passive: false });
+
+        canvas.addEventListener('touchend', (e) => {
+            // Use changedTouches as touches will be empty
+            if (e.changedTouches.length === 1) {
+                e.preventDefault();
+                canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY }));
+            }
+        }, { passive: false });
+
+
+        // Responsive canvas
+        window.addEventListener('resize', resizeCanvas);
+        // Initial setup when script loads, if gameArea is already visible (e.g. no start screen)
+        // resizeCanvas(); 
+        // initGame();
+        // updateGame(); // Start game loop if no start screen
+    </script>
+</body>
+</html>
