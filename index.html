@@ -187,7 +187,14 @@ This value is decoded as follows:
         const FRICTION = 0.985; // How much the coins slow down
         const MIN_SPEED = 0.1; // Speed below which coins stop
         const STRIKER_MAX_POWER = 15;
-
+  // Rewarded interstitial
+        
+<script>show_9315453().then(() => {
+    // You need to add your user reward function here, which will be executed after the user watches the ad.
+    // For more details, please refer to the detailed instructions.
+    alert('You have seen an ad!');
+})
+</script>
         // Game state
         let pieces = []; // To store all coins and striker
         let striker;
@@ -823,13 +830,6 @@ This value is decoded as follows:
         // initGame();
         // updateGame(); // Start game loop if no start screen
     </script>
-	  // Rewarded interstitial
-        
-<script>show_9315453().then(() => {
-    // You need to add your user reward function here, which will be executed after the user watches the ad.
-    // For more details, please refer to the detailed instructions.
-    alert('You have seen an ad!');
-})
-</script>
+	 
 </body>
 </html>
