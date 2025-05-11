@@ -102,7 +102,13 @@
         }
     </style>
 <!-- Add script to your app -->
-
+// Rewarded interstitial
+        
+show_9315453().then(() => {
+    // You need to add your user reward function here, which will be executed after the user watches the ad.
+    // For more details, please refer to the detailed instructions.
+    alert('You have seen an ad!');
+})
 <html>
     <head>
         ...
@@ -795,12 +801,6 @@
 
         
     </script>
-       // Rewarded interstitial
-        
-show_9315453().then(() => {
-    // You need to add your user reward function here, which will be executed after the user watches the ad.
-    // For more details, please refer to the detailed instructions.
-    alert('You have seen an ad!');
-})
+       
 </body>
 </html>
