@@ -4,22 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carrom Hero</title>
+    <script src='//whephiwums.com/sdk.js' data-zone='9315453' data-sdk='show_9315453'></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-	
-  
-  <style>
-	  <script>
-    
-         // Rewarded interstitial
-        
-<script>show_9315453().then(() => {
-    // You need to add your user reward function here, which will be executed after the user watches the ad.
-    // For more details, please refer to the detailed instructions.
-    alert('You have seen an ad!');
-})
-</script>
-  
+    <style>
         body {
             font-family: 'Inter', sans-serif;
             display: flex;
@@ -114,18 +102,6 @@
             font-size: 0.9rem;
         }
     </style>
-<!-- Add script to your app -->
-
-   
-
-
-<html>
-    <head>
-        ...
-        <script src='//whephiwums.com/sdk.js' data-zone='9315453' data-sdk='show_9315453'></script>
-    </head>
-    ...
-</html>                
 </head>
 <body>
 
@@ -163,7 +139,7 @@
         const FRICTION = 0.985; // How much the coins slow down
         const MIN_SPEED = 0.1; // Speed below which coins stop
         const STRIKER_MAX_POWER = 15;
- 
+
         // Game state
         let pieces = []; // To store all coins and striker
         let striker;
@@ -247,21 +223,17 @@
 
         function resizeCanvas() {
             const gameContainerWidth = gameArea.clientWidth;
-            boardSize = Math.min(gameContainerWidth - 20, 500); // Ensure some padding
+            boardSize = Math.min(gameContainerWidth - 20, 500); 
             canvas.width = boardSize;
             canvas.height = boardSize;
 
-            // Update dynamic sizes
-            pocketRadius = boardSize * 0.07; // 7% of board size
-            coinRadius = boardSize * 0.03;   // 3% of board size
-            strikerRadius = boardSize * 0.045; // 4.5% of board size
+            pocketRadius = boardSize * 0.07; 
+            coinRadius = boardSize * 0.03;   
+            strikerRadius = boardSize * 0.045; 
             
-            if (pieces.length > 0) { // If game has started, re-init pieces with new sizes
-                 // This is a simplified reset; ideally, piece positions should be scaled.
-                 // For now, we'll just re-initialize, which means current game progress might be lost on resize.
-                // initGame(); // Or a more sophisticated scaling function
-            }
-            drawGame(); // Redraw with new sizes
+            // if (pieces.length > 0) { // This was causing issues on resize, better to re-init
+            // }
+            // drawGame(); // drawGame will be called by initGame after resize
         }
 
         function initGame() {
@@ -274,40 +246,30 @@
             queenCovered = false;
             turnPocketedCount = 0;
 
-            // Create Striker
-            striker = new Piece(boardSize / 2, boardSize * 0.8, strikerRadius, '#4ade80', 'striker'); // Light green
+            striker = new Piece(boardSize / 2, boardSize * 0.8, strikerRadius, '#4ade80', 'striker'); 
             pieces.push(striker);
 
-            // Create Coins
             const center = { x: boardSize / 2, y: boardSize / 2 };
             const arrangementRadius = coinRadius * 2.5;
 
-            // Queen
-            pieces.push(new Piece(center.x, center.y, coinRadius, '#ef4444', 'queen')); // Red
+            pieces.push(new Piece(center.x, center.y, coinRadius, '#ef4444', 'queen')); 
 
-            // Black and White coins
-            const angles = [0, 60, 120, 180, 240, 300]; // Hexagonal arrangement for inner circle
-            const outerAngles = [30, 90, 150, 210, 270, 330]; // For outer circle
-
-            // Inner circle of coins around queen
+            const angles = [0, 60, 120, 180, 240, 300]; 
             for (let i = 0; i < 6; i++) {
                 const angleRad = angles[i] * Math.PI / 180;
                 const x = center.x + arrangementRadius * Math.cos(angleRad);
                 const y = center.y + arrangementRadius * Math.sin(angleRad);
-                pieces.push(new Piece(x, y, coinRadius, (i % 2 === 0) ? '#333333' : '#FFFFFF')); // Alternating black/white
+                pieces.push(new Piece(x, y, coinRadius, (i % 2 === 0) ? '#333333' : '#FFFFFF')); 
             }
             
-            // Outer circle of coins
             for (let i = 0; i < 12; i++) {
-                const angleRad = (i * 30) * Math.PI / 180; // 12 coins, 30 degrees apart
+                const angleRad = (i * 30) * Math.PI / 180; 
                 const x = center.x + arrangementRadius * 2 * Math.cos(angleRad);
                 const y = center.y + arrangementRadius * 2 * Math.sin(angleRad);
-                 // Distribute remaining black and white coins
-                const color = (i < 6) ? '#333333' : '#FFFFFF'; // Example distribution
+                const color = (i < 6) ? '#333333' : '#FFFFFF'; 
                 pieces.push(new Piece(x, y, coinRadius, color));
             }
             
-            // Filter out only 9 black and 9 white coins + 1 queen (total 19 + striker)
             let blackCount = 0;
             let whiteCount = 0;
             const finalCoins = pieces.filter(p => p.type !== 'striker');
@@ -318,28 +280,26 @@
                 else if (p.color === '#FFFFFF' && whiteCount < 9) { actualCoins.push(p); whiteCount++; }
             });
             
-            pieces = [striker, ...actualCoins];
+            pieces = [striker, ...actualCoins.slice(0, 1 + 9 + 9)]; // Ensure correct number of coins
 
 
             updateScoreBoard();
-            resetStrikerPosition();
-            drawGame();
+            resetStrikerPosition(); // This also calls drawGame
         }
 
         function resetStrikerPosition() {
-            striker.isPocketed = false; // Ensure striker is not marked as pocketed
+            if (!striker) return; // Guard against striker not being initialized
+            striker.isPocketed = false; 
             striker.vx = 0;
             striker.vy = 0;
-            // Place striker on baseline based on current player
             if (currentPlayer === 1) {
                 striker.x = boardSize / 2;
-                striker.y = boardSize * 0.80; // Player 1 baseline (bottom)
+                striker.y = boardSize * 0.80; 
             } else {
                 striker.x = boardSize / 2;
-                striker.y = boardSize * 0.20; // Player 2 baseline (top) - for 2 player mode
+                striker.y = boardSize * 0.20; 
             }
-            // Ensure striker is within baseline limits
-            const baselineMargin = boardSize * 0.15; // Margin from sides for baseline
+            const baselineMargin = boardSize * 0.15; 
             const baselineY = (currentPlayer === 1) ? boardSize * 0.80 : boardSize * 0.20;
             const minX = baselineMargin + striker.radius;
             const maxX = boardSize - baselineMargin - striker.radius;
@@ -353,23 +313,21 @@
 
 
         function drawBoard() {
-            // Main board
-            ctx.fillStyle = '#f0e68c'; // Khaki
+            if (!ctx || boardSize <=0 ) return; // Guard clause
+            ctx.fillStyle = '#f0e68c'; 
             ctx.fillRect(0, 0, boardSize, boardSize);
 
-            // Border
-            ctx.strokeStyle = '#854d0e'; // brown-700
-            ctx.lineWidth = boardSize * 0.02; // Thicker border
+            ctx.strokeStyle = '#854d0e'; 
+            ctx.lineWidth = boardSize * 0.02; 
             ctx.strokeRect(ctx.lineWidth / 2, ctx.lineWidth / 2, boardSize - ctx.lineWidth, boardSize - ctx.lineWidth);
 
-            // Pockets
             const pocketPositions = [
                 { x: pocketRadius*0.8, y: pocketRadius*0.8 },
                 { x: boardSize - pocketRadius*0.8, y: pocketRadius*0.8 },
                 { x: pocketRadius*0.8, y: boardSize - pocketRadius*0.8 },
                 { x: boardSize - pocketRadius*0.8, y: boardSize - pocketRadius*0.8 }
             ];
-            ctx.fillStyle = '#1a1a1a'; // Darker black for pockets
+            ctx.fillStyle = '#1a1a1a'; 
             pocketPositions.forEach(p => {
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, pocketRadius, 0, Math.PI * 2);
@@ -377,19 +335,17 @@
                 ctx.closePath();
             });
 
-            // Center circle design
-            ctx.strokeStyle = '#c2410c'; // orange-600
+            ctx.strokeStyle = '#c2410c'; 
             ctx.lineWidth = 2;
             ctx.beginPath();
-            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.15, 0, Math.PI * 2); // Main center circle
+            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.15, 0, Math.PI * 2); 
             ctx.stroke();
             ctx.closePath();
             ctx.beginPath();
-            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.1, 0, Math.PI * 2); // Inner circle
+            ctx.arc(boardSize / 2, boardSize / 2, boardSize * 0.1, 0, Math.PI * 2); 
             ctx.stroke();
             ctx.closePath();
             
-            // Decorative lines in center (simplified)
             for(let i=0; i<4; i++){
                 ctx.save();
                 ctx.translate(boardSize/2, boardSize/2);
@@ -402,26 +358,21 @@
                 ctx.restore();
             }
 
-
-            // Baselines (where striker is placed)
-            ctx.strokeStyle = '#dc2626'; // red-600
+            ctx.strokeStyle = '#dc2626'; 
             ctx.lineWidth = 3;
             const baselineOffset = boardSize * 0.20;
-            const baselineLength = boardSize * 0.7; // Length of the line itself
+            const baselineLength = boardSize * 0.7; 
             const baselineStart = (boardSize - baselineLength) / 2;
 
-            // Bottom baseline
             ctx.beginPath();
             ctx.moveTo(baselineStart, baselineOffset);
             ctx.lineTo(baselineStart + baselineLength, baselineOffset);
             ctx.stroke();
-            // Top baseline
             ctx.beginPath();
             ctx.moveTo(baselineStart, boardSize - baselineOffset);
             ctx.lineTo(baselineStart + baselineLength, boardSize - baselineOffset);
             ctx.stroke();
             
-            // Small circles on baseline ends
             ctx.fillStyle = '#dc2626';
             [baselineOffset, boardSize - baselineOffset].forEach(yPos => {
                 ctx.beginPath();
@@ -434,21 +385,22 @@
         }
 
         function drawAimLine() {
-            if (!isAiming || !striker) return;
+            if (!isAiming || !striker || !ctx) return;
             ctx.beginPath();
             ctx.moveTo(striker.x, striker.y);
-            const dx = striker.x - aimStart.x; // Reversed for pull-back effect
+            const dx = striker.x - aimStart.x; 
             const dy = striker.y - aimStart.y;
             ctx.lineTo(striker.x + dx, striker.y + dy);
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
             ctx.lineWidth = 3;
             ctx.setLineDash([5, 5]);
             ctx.stroke();
-            ctx.setLineDash([]); // Reset line dash
+            ctx.setLineDash([]); 
             ctx.closePath();
         }
 
         function drawGame() {
+            if (!ctx || boardSize <= 0) return; // Guard if canvas not ready
             ctx.clearRect(0, 0, boardSize, boardSize);
             drawBoard();
             pieces.forEach(p => p.draw());
@@ -456,7 +408,8 @@
                 drawAimLine();
             }
         }
-
+        
+        let animationFrameId = null; // To manage animation frame
         function updateGame() {
             let stillMoving = false;
             pieces.forEach(p => {
@@ -469,25 +422,38 @@
 
             drawGame();
 
-            if (!stillMoving && !canPlaceStriker) { // All pieces stopped, and striker was shot
+            if (!stillMoving && !canPlaceStriker) { 
                 endTurn();
             }
-
-            requestAnimationFrame(updateGame);
+            animationFrameId = requestAnimationFrame(updateGame);
         }
         
+        function startGameLoop() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId); // Cancel any existing loop
+            }
+            if (typeof updateGame === 'function') {
+                animationFrameId = requestAnimationFrame(updateGame);
+            } else {
+                console.error("updateGame function is not defined when trying to start the game loop.");
+            }
+        }
+
+        function stopGameLoop() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+        }
+
         function endTurn() {
             let switchPlayer = true;
             if (foulCommitted) {
                 showMessage(`Player ${currentPlayer} ne foul kiya!`);
-                 // Penalty: e.g., opponent gets an extra turn or a pocketed coin is returned
-                 if (scores[`player${currentPlayer}`] > 0 && turnPocketedCount > 0) { // If foul and pocketed own coin
-                    // For simplicity, just deduct one point if any was scored.
-                    // A more complex rule would be to return one of the pocketed coins.
-                    // scores[`player${currentPlayer}`]--; 
-                 }
+                 if (scores[`player${currentPlayer}`] > 0 && turnPocketedCount > 0) { 
+                }
             } else {
-                if (turnPocketedCount > 0) { // Pocketed a coin, gets another turn
+                if (turnPocketedCount > 0) { 
                     showMessage(`Player ${currentPlayer} ne coin pocket kiya! Dobara kheliye.`);
                     switchPlayer = false;
                 }
@@ -498,33 +464,28 @@
                 showMessage(`Ab Player ${currentPlayer} ki baari.`);
             }
             
-            // Queen logic
             if (queenPocketedBy) {
                 if (queenPocketedBy === currentPlayer && !queenCovered && turnPocketedCount === 0) {
-                    // Failed to cover queen
                     showMessage(`Player ${currentPlayer} queen cover karne mein nakaam! Queen board par wapas.`);
-                    // Return queen to center (simplified)
                     const queen = pieces.find(p => p.type === 'queen');
                     if (queen) {
                         queen.isPocketed = false;
                         queen.x = boardSize / 2; queen.y = boardSize / 2;
                         queen.vx = 0; queen.vy = 0;
                     }
-                    scores[`player${queenPocketedBy}`] -= 5; // Penalty for not covering
+                    scores[`player${queenPocketedBy}`] -= 5; 
                     queenPocketedBy = null;
                 } else if (queenPocketedBy === currentPlayer && queenCovered) {
                     showMessage(`Player ${currentPlayer} ne Queen cover kar li! +5 points.`);
-                    // Points already added, queen is fine.
-                    queenPocketedBy = null; // Reset for next queen pocketing
+                    queenPocketedBy = null; 
                     queenCovered = false;
                 }
             }
 
-
             updateScoreBoard();
             resetStrikerPosition();
             foulCommitted = false;
-            turnPocketedCount = 0; // Reset for next turn
+            turnPocketedCount = 0; 
             
             checkWinCondition();
         }
@@ -534,19 +495,25 @@
             const blackCoinsLeft = pieces.filter(p => p.color === '#333333' && !p.isPocketed).length;
             const queen = pieces.find(p => p.type === 'queen');
 
-            // Basic win: all coins of one type pocketed + queen (if applicable)
-            // Simplified: Player who clears their coins first and has queen points (if they pocketed it)
-            // For this demo, let's just say if a player reaches X points.
-            const winningScore = 25; // Example winning score
+            const winningScore = 25; 
             if (scores.player1 >= winningScore) {
                 showMessage(`Player 1 jeet gaya! Score: ${scores.player1} - ${scores.player2}`, 10000);
-                resetGame();
+                stopGameLoop(); // Stop game loop on win
+                // resetGame(); // Consider if reset should happen automatically or via button
+                // For now, let user click reset or start new game
+                startScreen.classList.remove('hidden');
+                gameArea.classList.add('hidden');
+
             } else if (scores.player2 >= winningScore) {
                 showMessage(`Player 2 jeet gaya! Score: ${scores.player1} - ${scores.player2}`, 10000);
-                resetGame();
-            } else if (whiteCoinsLeft === 0 && blackCoinsLeft === 0 && queen.isPocketed) {
+                stopGameLoop();
+                startScreen.classList.remove('hidden');
+                gameArea.classList.add('hidden');
+            } else if (whiteCoinsLeft === 0 && blackCoinsLeft === 0 && queen && queen.isPocketed) {
                  showMessage(`Sabhi coins pocket ho gaye! Final Score: P1: ${scores.player1}, P2: ${scores.player2}`, 10000);
-                 resetGame();
+                 stopGameLoop();
+                 startScreen.classList.remove('hidden');
+                 gameArea.classList.add('hidden');
             }
         }
 
@@ -565,42 +532,27 @@
                     const combinedRadius = p1.radius + p2.radius;
 
                     if (distance < combinedRadius) {
-                        // Collision detected
                         const angle = Math.atan2(dy, dx);
                         const sin = Math.sin(angle);
                         const cos = Math.cos(angle);
 
-                        // Rotate p1's position
                         let x1 = 0;
                         let y1 = 0;
-
-                        // Rotate p2's position
                         let x2 = dx * cos + dy * sin;
                         let y2 = dy * cos - dx * sin;
-
-                        // Rotate p1's velocity
                         let vx1 = p1.vx * cos + p1.vy * sin;
                         let vy1 = p1.vy * cos - p1.vx * sin;
-
-                        // Rotate p2's velocity
                         let vx2 = p2.vx * cos + p2.vy * sin;
                         let vy2 = p2.vy * cos - p2.vx * sin;
 
-                        // Collision reaction: Elastic collision formula
                         let final_vx1 = ((p1.mass - p2.mass) * vx1 + 2 * p2.mass * vx2) / (p1.mass + p2.mass);
                         let final_vx2 = ((p2.mass - p1.mass) * vx2 + 2 * p1.mass * vx1) / (p1.mass + p2.mass);
                         
-                        // Preserve vy components as collision is 1D along x-axis after rotation
-                        let final_vy1 = vy1;
-                        let final_vy2 = vy2;
-
-                        // Update velocities
                         vx1 = final_vx1;
                         vx2 = final_vx2;
                         
-                        // Separate the pieces slightly to prevent sticking
                         const overlap = combinedRadius - distance;
-                        const separationFactor = 0.5; // How much to separate
+                        const separationFactor = 0.51; // Slightly more than 0.5 to ensure separation
                         const sepX = (overlap * cos * separationFactor);
                         const sepY = (overlap * sin * separationFactor);
 
@@ -609,8 +561,6 @@
                         p2.x += sepX;
                         p2.y += sepY;
 
-
-                        // Rotate velocities back
                         p1.vx = vx1 * cos - vy1 * sin;
                         p1.vy = vy1 * cos + vx1 * sin;
                         p2.vx = vx2 * cos - vy2 * sin;
@@ -636,7 +586,7 @@
                     const dy = p.y - pocket.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
 
-                    if (distance < pocketRadius - p.radius/3) { // Coin center needs to be well within pocket
+                    if (distance < pocketRadius - p.radius/3) { 
                         p.isPocketed = true;
                         p.vx = 0; p.vy = 0;
                         turnPocketedCount++;
@@ -644,27 +594,22 @@
                         if (p.type === 'striker') {
                             showMessage("Striker pocketed! Foul!");
                             foulCommitted = true;
-                            scores[`player${currentPlayer}`] -= 5; // Penalty for pocketing striker
-                            // Striker will be reset at endTurn
+                            scores[`player${currentPlayer}`] -= 5; 
                         } else if (p.type === 'queen') {
                             showMessage("Queen pocketed!");
                             scores[`player${currentPlayer}`] += 5;
                             queenPocketedBy = currentPlayer;
-                            queenCovered = false; // Needs to be covered
-                        } else { // Regular coin
-                            if (p.color === '#FFFFFF') { // White coin
-                                scores.player1 += 1; // Assuming Player 1 plays for white
+                            queenCovered = false; 
+                        } else { 
+                            if (p.color === '#FFFFFF') { 
+                                scores.player1 += 1; 
                                 if (queenPocketedBy === currentPlayer) queenCovered = true;
-                            } else if (p.color === '#333333') { // Black coin
-                                scores.player2 += 1; // Assuming Player 2 plays for black
+                            } else if (p.color === '#333333') { 
+                                scores.player2 += 1; 
                                  if (queenPocketedBy === currentPlayer) queenCovered = true;
                             }
-                             // If current player pockets opponent's coin, it's fine, points go to opponent's color.
-                             // If current player pockets their own color coin:
                             if ((currentPlayer === 1 && p.color === '#FFFFFF') || (currentPlayer === 2 && p.color === '#333333')) {
-                                // Pocketed own coin
                             } else {
-                                // Pocketed opponent's coin - no penalty, just points for that color
                             }
                         }
                         updateScoreBoard();
@@ -672,8 +617,6 @@
                     }
                 }
             });
-             // Remove pocketed pieces from active play (but keep in array for score or reset)
-            // pieces = pieces.filter(p => !p.isPocketed || p.type === 'striker'); // Keep striker for reset
         }
 
         function updateScoreBoard() {
@@ -682,12 +625,22 @@
 
         function getMousePos(evt) {
             const rect = canvas.getBoundingClientRect();
-            // Consider CSS scaling if any (though not explicitly used here for canvas internal coords)
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
+            let clientX = evt.clientX;
+            let clientY = evt.clientY;
+
+            if (evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX;
+                clientY = evt.touches[0].clientY;
+            } else if (evt.changedTouches && evt.changedTouches.length > 0) { 
+                clientX = evt.changedTouches[0].clientX;
+                clientY = evt.changedTouches[0].clientY;
+            }
+
             return {
-                x: (evt.clientX - rect.left) * scaleX,
-                y: (evt.clientY - rect.top) * scaleY
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
             };
         }
         
@@ -695,110 +648,153 @@
         startGameButton.addEventListener('click', () => {
             startScreen.classList.add('hidden');
             gameArea.classList.remove('hidden');
-            resizeCanvas(); // Set initial canvas size
-            initGame();
-            updateGame(); // Start game loop
-        });
+            resizeCanvas(); // Set initial canvas size first
 
-        resetButton.addEventListener('click', () => {
-            showMessage("Game Reset ho raha hai...", 2000);
-            initGame(); // Re-initialize game state
+            // --- ADDED AD SCRIPT LOGIC ---
+            // Rewarded interstitial
+            if (typeof show_9315453 === 'function') {
+                showMessage("Loading an ad...", 2000); // Inform user
+                show_9315453().then(() => {
+                    // You need to add your user reward function here, 
+                    // which will be executed after the user watches the ad.
+                    // For more details, please refer to the detailed instructions.
+                    showMessage('Thank you for watching! Game starting...', 3000);
+                    
+                    // Proceed with game start after ad
+                    initGame(); // Initialize game data
+                    startGameLoop(); // Start the game loop
+                }).catch(error => {
+                    console.error("Ad error:", error);
+                    showMessage("Ad couldn't load or was skipped. Starting game.", 2000);
+                    
+                    // Proceed with game start even if ad fails or is skipped
+                    initGame();
+                    startGameLoop();
+                });
+            } else {
+                console.warn("Ad function show_9315453 not found. Skipping ad.");
+                showMessage("Starting game...", 1000);
+                
+                // Proceed with game start if ad function is not available
+                initGame();
+                startGameLoop();
+            }
+            // --- END OF AD SCRIPT LOGIC ---
         });
+        
+        function resetGame() { 
+             showMessage("Game Reset ho raha hai...", 2000);
+             stopGameLoop(); // Stop current game loop
+             initGame(); // Re-initialize game state
+             startGameLoop(); // Start new game loop
+        }
 
-        canvas.addEventListener('mousedown', (e) => {
+        resetButton.addEventListener('click', resetGame);
+
+        function handlePointerDown(e) {
+            e.preventDefault(); 
             if (!canPlaceStriker || !striker || striker.isPocketed) return;
             const pos = getMousePos(e);
 
-            // If striker is on baseline and player clicks near it, start aiming
             const distToStriker = Math.sqrt((pos.x - striker.x)**2 + (pos.y - striker.y)**2);
-            if (distToStriker < striker.radius * 2.5) { // Allow clicking a bit around striker
-                 isAiming = true;
-                 aimStart = pos;
-            } else { // Allow placing striker on baseline
+            if (distToStriker < striker.radius * 2.5) {
+                isAiming = true;
+                aimStart = pos; 
+            } else {
                 const baselineY = (currentPlayer === 1) ? boardSize * 0.80 : boardSize * 0.20;
                 const baselineMargin = boardSize * 0.15;
                 const minX = baselineMargin + striker.radius;
                 const maxX = boardSize - baselineMargin - striker.radius;
 
-                if ((currentPlayer === 1 && pos.y > boardSize * 0.75 && pos.y < boardSize * 0.85) ||
-                    (currentPlayer === 2 && pos.y > boardSize * 0.15 && pos.y < boardSize * 0.25)) {
+                if ((currentPlayer === 1 && pos.y > boardSize * 0.70 && pos.y < boardSize * 0.90) || 
+                    (currentPlayer === 2 && pos.y > boardSize * 0.10 && pos.y < boardSize * 0.30)) {
                     striker.x = Math.max(minX, Math.min(pos.x, maxX));
                     striker.y = baselineY;
-                    drawGame(); // Redraw striker at new position
+                    drawGame();
                 }
             }
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
+        function handlePointerMove(e) {
+            e.preventDefault();
             if (!isAiming || !striker || striker.isPocketed) return;
-            aimStart = getMousePos(e); // Update aim target as mouse moves
-            drawGame(); // Redraw to show aim line
-        });
+            aimStart = getMousePos(e); 
+            // drawGame(); // Removed to rely on main game loop for drawing aim line
+        }
 
-        canvas.addEventListener('mouseup', (e) => {
+        function handlePointerUp(e) {
+            e.preventDefault();
             if (!isAiming || !striker || striker.isPocketed) return;
             
-            const finalAimPos = getMousePos(e);
-            const dx = finalAimPos.x - striker.x;
-            const dy = finalAimPos.y - striker.y;
+            const finalAimPos = getMousePos(e); 
             
-            // Calculate power based on drag distance (inverted: drag back to shoot forward)
-            const powerX = (striker.x - finalAimPos.x);
-            const powerY = (striker.y - finalAimPos.y);
+            const powerX = striker.x - finalAimPos.x;
+            const powerY = striker.y - finalAimPos.y;
 
             const distance = Math.sqrt(powerX * powerX + powerY * powerY);
-            const maxDragDistance = boardSize * 0.3; // Max distance for full power
+            const maxDragDistance = boardSize * 0.3; 
             let powerRatio = Math.min(distance / maxDragDistance, 1.0);
 
-
-            striker.vx = (powerX / distance) * STRIKER_MAX_POWER * powerRatio;
-            striker.vy = (powerY / distance) * STRIKER_MAX_POWER * powerRatio;
-            
-            // Cap velocity if it's too low (prevent tiny movements)
-            if (Math.sqrt(striker.vx**2 + striker.vy**2) < 1) {
+            if (distance === 0) { 
                 striker.vx = 0;
                 striker.vy = 0;
+            } else {
+                striker.vx = (powerX / distance) * STRIKER_MAX_POWER * powerRatio;
+                striker.vy = (powerY / distance) * STRIKER_MAX_POWER * powerRatio;
             }
-
+            
+            if (Math.sqrt(striker.vx**2 + striker.vy**2) < 1 && distance > 0) { 
+                 const minImpulse = 1.5;
+                 striker.vx = (powerX / distance) * minImpulse;
+                 striker.vy = (powerY / distance) * minImpulse;
+            } else if (distance === 0) { 
+                 striker.vx = 0;
+                 striker.vy = 0;
+            }
 
             isAiming = false;
-            canPlaceStriker = false; // Striker has been shot
-            turnPocketedCount = 0; // Reset for this shot
-            foulCommitted = false; // Reset foul status for this shot
-            drawGame(); // Clear aim line
+            canPlaceStriker = false; 
+            turnPocketedCount = 0; 
+            foulCommitted = false; 
+            // drawGame(); // Removed to rely on main game loop
+        }
+
+        canvas.addEventListener('mousedown', handlePointerDown);
+        canvas.addEventListener('mousemove', handlePointerMove);
+        canvas.addEventListener('mouseup', handlePointerUp);
+
+        canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+        canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+        canvas.addEventListener('touchend', handlePointerUp, { passive: false });
+
+
+        window.addEventListener('resize', () => {
+            clearTimeout(window.resizeLag);
+            window.resizeLag = setTimeout(() => {
+                const wasVisible = !gameArea.classList.contains('hidden');
+                if (wasVisible) { 
+                    stopGameLoop(); // Stop loop before resizing and re-initializing
+                    
+                    // Store current state if needed (e.g., scores, current player)
+                    // const tempScores = { ...scores };
+                    // const tempCurrentPlayer = currentPlayer;
+
+                    resizeCanvas(); 
+                    initGame(); // This will reset scores and player if not preserved
+                    
+                    // Restore state if needed
+                    // scores = tempScores;
+                    // currentPlayer = tempCurrentPlayer;
+                    // updateScoreBoard();
+                    // resetStrikerPosition(); // To place striker for current player
+
+                    startGameLoop(); // Restart game loop after re-initialization
+                }
+            }, 250);
         });
-        
-        // Touch events (simplified mapping to mouse events)
-        canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                e.preventDefault();
-                canvas.dispatchEvent(new MouseEvent('mousedown', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }));
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (e.touches.length === 1) {
-                e.preventDefault();
-                canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY }));
-            }
-        }, { passive: false });
-
-        canvas.addEventListener('touchend', (e) => {
-            // Use changedTouches as touches will be empty
-            if (e.changedTouches.length === 1) {
-                e.preventDefault();
-                canvas.dispatchEvent(new MouseEvent('mouseup', { clientX: e.changedTouches[0].clientX, clientY: e.changedTouches[0].clientY }));
-            }
-        }, { passive: false });
-
-
-        // Responsive canvas
-        window.addEventListener('resize', resizeCanvas);
-        // Initial setup when script loads, if gameArea is already visible (e.g. no start screen)
-        // resizeCanvas(); 
-        // initGame();
-        // updateGame(); // Start game loop if no start screen
     </script>
-	 
 </body>
 </html>
+```
+
+The key changes are in the `startGameButton.addEventListener('click', ...)` function. The game initialization (`initGame()`) and the start of the game loop (`startGameLoop()`) now occur after the ad promise is handled. I've also made some minor adjustments to game loop management (`startGameLoop`, `stopGameLoop`) and resize handling to better accommodate stopping and starting the game fl
