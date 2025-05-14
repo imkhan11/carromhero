@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carrom Hero</title>
+    <title>Carrom Pool Game with In-App & Rewarded Ads</title>
     <script src='//whephiwums.com/sdk.js' data-zone='9315453' data-sdk='show_9315453'></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -231,9 +231,6 @@
             coinRadius = boardSize * 0.03;   
             strikerRadius = boardSize * 0.045; 
             
-            // if (pieces.length > 0) { // This was causing issues on resize, better to re-init
-            // }
-            // drawGame(); // drawGame will be called by initGame after resize
         }
 
         function initGame() {
@@ -280,15 +277,15 @@
                 else if (p.color === '#FFFFFF' && whiteCount < 9) { actualCoins.push(p); whiteCount++; }
             });
             
-            pieces = [striker, ...actualCoins.slice(0, 1 + 9 + 9)]; // Ensure correct number of coins
+            pieces = [striker, ...actualCoins.slice(0, 1 + 9 + 9)]; 
 
 
             updateScoreBoard();
-            resetStrikerPosition(); // This also calls drawGame
+            resetStrikerPosition(); 
         }
 
         function resetStrikerPosition() {
-            if (!striker) return; // Guard against striker not being initialized
+            if (!striker) return; 
             striker.isPocketed = false; 
             striker.vx = 0;
             striker.vy = 0;
@@ -313,7 +310,7 @@
 
 
         function drawBoard() {
-            if (!ctx || boardSize <=0 ) return; // Guard clause
+            if (!ctx || boardSize <=0 ) return; 
             ctx.fillStyle = '#f0e68c'; 
             ctx.fillRect(0, 0, boardSize, boardSize);
 
@@ -400,7 +397,7 @@
         }
 
         function drawGame() {
-            if (!ctx || boardSize <= 0) return; // Guard if canvas not ready
+            if (!ctx || boardSize <= 0) return; 
             ctx.clearRect(0, 0, boardSize, boardSize);
             drawBoard();
             pieces.forEach(p => p.draw());
@@ -409,7 +406,7 @@
             }
         }
         
-        let animationFrameId = null; // To manage animation frame
+        let animationFrameId = null; 
         function updateGame() {
             let stillMoving = false;
             pieces.forEach(p => {
@@ -430,7 +427,7 @@
         
         function startGameLoop() {
             if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId); // Cancel any existing loop
+                cancelAnimationFrame(animationFrameId); 
             }
             if (typeof updateGame === 'function') {
                 animationFrameId = requestAnimationFrame(updateGame);
@@ -498,9 +495,7 @@
             const winningScore = 25; 
             if (scores.player1 >= winningScore) {
                 showMessage(`Player 1 jeet gaya! Score: ${scores.player1} - ${scores.player2}`, 10000);
-                stopGameLoop(); // Stop game loop on win
-                // resetGame(); // Consider if reset should happen automatically or via button
-                // For now, let user click reset or start new game
+                stopGameLoop(); 
                 startScreen.classList.remove('hidden');
                 gameArea.classList.add('hidden');
 
@@ -552,7 +547,7 @@
                         vx2 = final_vx2;
                         
                         const overlap = combinedRadius - distance;
-                        const separationFactor = 0.51; // Slightly more than 0.5 to ensure separation
+                        const separationFactor = 0.51; 
                         const sepX = (overlap * cos * separationFactor);
                         const sepY = (overlap * sin * separationFactor);
 
@@ -648,45 +643,35 @@
         startGameButton.addEventListener('click', () => {
             startScreen.classList.add('hidden');
             gameArea.classList.remove('hidden');
-            resizeCanvas(); // Set initial canvas size first
+            resizeCanvas(); 
 
-            // --- ADDED AD SCRIPT LOGIC ---
-            // Rewarded interstitial
+            // --- REWARDED AD SCRIPT LOGIC (on button click) ---
             if (typeof show_9315453 === 'function') {
-                showMessage("Loading an ad...", 2000); // Inform user
-                show_9315453().then(() => {
-                    // You need to add your user reward function here, 
-                    // which will be executed after the user watches the ad.
-                    // For more details, please refer to the detailed instructions.
-                    showMessage('Thank you for watching! Game starting...', 3000);
-                    
-                    // Proceed with game start after ad
-                    initGame(); // Initialize game data
-                    startGameLoop(); // Start the game loop
+                showMessage("Loading a rewarded ad...", 2000); 
+                show_9315453().then(() => { // This is the call for the rewarded ad (no arguments or type: 'rewarded')
+                    showMessage('You have seen a rewarded ad!', 3000); 
+                    initGame(); 
+                    startGameLoop(); 
                 }).catch(error => {
-                    console.error("Ad error:", error);
-                    showMessage("Ad couldn't load or was skipped. Starting game.", 2000);
-                    
-                    // Proceed with game start even if ad fails or is skipped
+                    console.error("Rewarded Ad error:", error);
+                    showMessage("Rewarded Ad couldn't load or was skipped. Starting game.", 2000);
                     initGame();
                     startGameLoop();
                 });
             } else {
-                console.warn("Ad function show_9315453 not found. Skipping ad.");
+                console.warn("Ad function show_9315453 not found. Skipping rewarded ad.");
                 showMessage("Starting game...", 1000);
-                
-                // Proceed with game start if ad function is not available
                 initGame();
                 startGameLoop();
             }
-            // --- END OF AD SCRIPT LOGIC ---
+            // --- END OF REWARDED AD SCRIPT LOGIC ---
         });
         
         function resetGame() { 
              showMessage("Game Reset ho raha hai...", 2000);
-             stopGameLoop(); // Stop current game loop
-             initGame(); // Re-initialize game state
-             startGameLoop(); // Start new game loop
+             stopGameLoop(); 
+             initGame(); 
+             startGameLoop(); 
         }
 
         resetButton.addEventListener('click', resetGame);
@@ -719,7 +704,6 @@
             e.preventDefault();
             if (!isAiming || !striker || striker.isPocketed) return;
             aimStart = getMousePos(e); 
-            // drawGame(); // Removed to rely on main game loop for drawing aim line
         }
 
         function handlePointerUp(e) {
@@ -756,7 +740,6 @@
             canPlaceStriker = false; 
             turnPocketedCount = 0; 
             foulCommitted = false; 
-            // drawGame(); // Removed to rely on main game loop
         }
 
         canvas.addEventListener('mousedown', handlePointerDown);
@@ -773,28 +756,46 @@
             window.resizeLag = setTimeout(() => {
                 const wasVisible = !gameArea.classList.contains('hidden');
                 if (wasVisible) { 
-                    stopGameLoop(); // Stop loop before resizing and re-initializing
-                    
-                    // Store current state if needed (e.g., scores, current player)
-                    // const tempScores = { ...scores };
-                    // const tempCurrentPlayer = currentPlayer;
-
+                    stopGameLoop(); 
                     resizeCanvas(); 
-                    initGame(); // This will reset scores and player if not preserved
-                    
-                    // Restore state if needed
-                    // scores = tempScores;
-                    // currentPlayer = tempCurrentPlayer;
-                    // updateScoreBoard();
-                    // resetStrikerPosition(); // To place striker for current player
-
-                    startGameLoop(); // Restart game loop after re-initialization
+                    initGame(); 
+                    startGameLoop(); 
                 }
             }, 250);
         });
+
+        // --- IN-APP INTERSTITIAL AD SCRIPT ---
+        // This script is intended to run automatically based on its settings.
+        // Placed at the end to ensure the SDK and game environment are ready.
+        /*
+        The In-App Interstitial script configuration is decoded as follows:
+        - show automatically 2 ads
+          within 0.1 hours (6 minutes)
+          with a 30-second interval between them
+          and a 5-second delay before the first one is shown.
+          The last digit, 0 (in everyPage: false), means that the session will be saved when you navigate between pages.
+          If you set the last digit as 1 (everyPage: true), then at any transition between pages,
+          the session will be reset, and the ads will start again.
+        */
+        if (typeof show_9315453 === 'function') {
+            console.log("Initializing In-App Interstitial Ad system...");
+            show_9315453({ 
+              type: 'inApp', 
+              inAppSettings: { 
+                frequency: 2, 
+                capping: 0.1, 
+                interval: 30, 
+                timeout: 5, 
+                everyPage: false // Corresponds to the '0' in the original comment
+              } 
+            });
+            // According to the snippet, this type of ad call might not return a promise
+            // or require explicit .then()/.catch() for its basic operation.
+            // The SDK likely handles its display internally based on the settings.
+        } else {
+            console.warn("Ad function show_9315453 not found. In-App Interstitial Ad system not initialized.");
+        }
+        // --- END OF IN-APP INTERSTITIAL AD SCRIPT ---
     </script>
 </body>
 </html>
-```
-
-The key changes are in the `startGameButton.addEventListener('click', ...)` function. The game initialization (`initGame()`) and the start of the game loop (`startGameLoop()`) now occur after the ad promise is handled. I've also made some minor adjustments to game loop management (`startGameLoop`, `stopGameLoop`) and resize handling to better accommodate stopping and starting the game fl
